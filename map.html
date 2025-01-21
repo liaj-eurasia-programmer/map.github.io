@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Leaflet.js Map</title>
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([51.505, -0.09], 13); // Coordinates for London
+
+        // Add a tile layer (background map)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Add custom marker
+        var customIcon = L.icon({
+            iconUrl: 'https://leafletjs.com/examples/custom-icons/leaf-red.png',
+            iconSize: [38, 38],
+            iconAnchor: [22, 94],
+            popupAnchor: [-3, -76],
+            shadowUrl: 'https://leafletjs.com/examples/custom-icons/leaf-shadow.png',
+            shadowSize: [50, 64],
+            shadowAnchor: [4, 62]
+        });
+
+        L.marker([51.5, -0.09], { icon: customIcon }).addTo(map)
+            .bindPopup("I am a custom marker!")
+            .openPopup();
+
+        // Add a circle overlay
+        L.circle([51.508, -0.11], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.5,
+            radius: 500
+        }).addTo(map)
+            .bindPopup("I am a circle overlay!");
+
+        // Add a polygon (example: custom area)
+        var latlngs = [
+            [51.509, -0.08],
+            [51.503, -0.06],
+            [51.51, -0.047]
+        ];
+
+        L.polygon(latlngs, { color: 'purple' }).addTo(map)
+            .bindPopup("I am a polygon!");
+
+        // Add a geoJSON layer
+        var geojsonLayer = L.geoJSON({
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "properties": {
+                    "name": "My Custom Feature"
+                },
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [-0.09, 51.505]
+                }
+            }]
+        }).addTo(map);
+
+        // Add controls for zooming and map reset
+        L.control.scale().addTo(map);
+        L.control.zoom().addTo(map);
+
+        // Add a feature that allows you to click on the map to place a marker
+        map.on('click', function(e) {
+            var clickedLat = e.latlng.lat.toFixed(4);
+            var clickedLng = e.latlng.lng.toFixed(4);
+            L.marker([e.latlng.lat, e.latlng.lng]).addTo(map)
+                .bindPopup("<b>New Marker!</b><br>Latitude: " + clickedLat + "<br>Longitude: " + clickedLng)
+                .openPopup();
+        });
+    </script>
+</body>
+</html>
