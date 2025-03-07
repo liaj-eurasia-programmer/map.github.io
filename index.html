@@ -1,95 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Leaflet.js Map</title>
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-    />
-    <style>
-        #map {
-            height: 600px;
-            width: 100%;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PubChem Integration</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+      font-size: 2.5em;
+      margin-bottom: 20px;
+    }
+    .search-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input[type="text"], select {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      flex: 1;
+      min-width: 200px;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .result-container {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: white;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      position: relative;
+    }
+    .result-container h2 {
+      color: #007bff;
+    }
+    .result-container p {
+      line-height: 1.6;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    #molecule-viewer {
+      width: 100%;
+      height: 300px;
+      margin-top: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .export-buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .close-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: #ff4d4d;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+    .close-button:hover {
+      background-color: #cc0000;
+    }
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #007bff;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .chemical-structure {
+      display: flex;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .chemical-structure img {
+      max-width: 200px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .latex-formula {
+      font-size: 1.5em;
+      margin-top: 20px;
+    }
+  </style>
+  <!-- 3Dmol.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/1.8.0/3Dmol-min.js"></script>
+  <!-- MathJax for LaTeX Support -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
+  <h1 id="typing-title"></h1>
+  <div class="search-container">
+    <select id="searchType">
+      <option value="name">Name</option>
+      <option value="cid">CID</option>
+      <option value="smiles">SMILES</option>
+      <option value="inchi">InChIKey</option>
+    </select>
+    <input type="text" id="chemicalInput" placeholder="" autocomplete="off">
+    <button onclick="searchChemical()">Search</button>
+    <button onclick="resetSearch()">Reset</button>
+  </div>
+  <div class="result-container" id="resultContainer">
+    <!-- Results will be displayed here -->
+    <button class="close-button" onclick="closeResults()">×</button>
+  </div>
 
-    <div id="map"></div>
+  <script>
+    // Typing Effect for Title and Placeholder
+    const titleText = "PubChem Chemical Search";
+    const placeholderText = "Enter a chemical name, CID, SMILES, or InChIKey";
+    let titleIndex = 0;
+    let placeholderIndex = 0;
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script>
-        // Initialize the map
-        var map = L.map('map').setView([51.505, -0.09], 13); // Coordinates for London
+    function typeTitle() {
+      if (titleIndex < titleText.length) {
+        document.getElementById("typing-title").innerHTML += titleText.charAt(titleIndex);
+        titleIndex++;
+        setTimeout(typeTitle, 100); // Typing speed (100ms per character)
+      }
+    }
 
-        // Add a tile layer (background map)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+    function typePlaceholder() {
+      if (placeholderIndex < placeholderText.length) {
+        document.getElementById("chemicalInput").placeholder += placeholderText.charAt(placeholderIndex);
+        placeholderIndex++;
+        setTimeout(typePlaceholder, 50); // Typing speed (50ms per character)
+      }
+    }
 
-        // Add custom marker
-        var customIcon = L.icon({
-            iconUrl: 'https://leafletjs.com/examples/custom-icons/leaf-red.png',
-            iconSize: [38, 38],
-            iconAnchor: [22, 94],
-            popupAnchor: [-3, -76],
-            shadowUrl: 'https://leafletjs.com/examples/custom-icons/leaf-shadow.png',
-            shadowSize: [50, 64],
-            shadowAnchor: [4, 62]
-        });
+    // Start typing effects
+    typeTitle();
+    typePlaceholder();
 
-        L.marker([51.5, -0.09], { icon: customIcon }).addTo(map)
-            .bindPopup("I am a custom marker!")
-            .openPopup();
+    // Rest of the JavaScript code for PubChem integration
+    let viewer; // Global variable to store the 3Dmol viewer instance
 
-        // Add a circle overlay
-        L.circle([51.508, -0.11], {
-            color: 'red',
-            fillColor: '#f03',
-            fillOpacity: 0.5,
-            radius: 500
-        }).addTo(map)
-            .bindPopup("I am a circle overlay!");
+    async function searchChemical() {
+      const searchType = document.getElementById('searchType').value;
+      const chemicalInput = document.getElementById('chemicalInput').value;
+      const resultContainer = document.getElementById('resultContainer');
 
-        // Add a polygon (example: custom area)
-        var latlngs = [
-            [51.509, -0.08],
-            [51.503, -0.06],
-            [51.51, -0.047]
-        ];
+      // Show loading spinner
+      resultContainer.innerHTML = '<div class="loading-spinner"></div>';
+      resultContainer.style.display = 'block';
 
-        L.polygon(latlngs, { color: 'purple' }).addTo(map)
-            .bindPopup("I am a polygon!");
+      try {
+        // Fetch data from PubChem API based on search type
+        let apiUrl;
+        switch (searchType) {
+          case 'name':
+            apiUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${chemicalInput}/JSON`;
+            break;
+          case 'cid':
+            apiUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${chemicalInput}/JSON`;
+            break;
+          case 'smiles':
+            apiUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/${chemicalInput}/JSON`;
+            break;
+          case 'inchi':
+            apiUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/inchi/${chemicalInput}/JSON`;
+            break;
+          default:
+            throw new Error('Invalid search type');
+        }
 
-        // Add a geoJSON layer
-        var geojsonLayer = L.geoJSON({
-            "type": "FeatureCollection",
-            "features": [{
-                "type": "Feature",
-                "properties": {
-                    "name": "My Custom Feature"
-                },
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [-0.09, 51.505]
-                }
-            }]
-        }).addTo(map);
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+          throw new Error('Chemical not found or API error');
+        }
+        const data = await response.json();
 
-        // Add controls for zooming and map reset
-        L.control.scale().addTo(map);
-        L.control.zoom().addTo(map);
+        // Extract relevant data
+        const compound = data.PC_Compounds[0];
+        const cid = compound.id.id.cid;
+        const name = compound.props.find(prop => prop.urn.label === 'IUPAC Name')?.value.sval || 'N/A';
+        const formula = compound.props.find(prop => prop.urn.label === 'Molecular Formula')?.value.sval || 'N/A';
+        const weight = compound.props.find(prop => prop.urn.label === 'Molecular Weight')?.value.sval || 'N/A';
 
-        // Add a feature that allows you to click on the map to place a marker
-        map.on('click', function(e) {
-            var clickedLat = e.latlng.lat.toFixed(4);
-            var clickedLng = e.latlng.lng.toFixed(4);
-            L.marker([e.latlng.lat, e.latlng.lng]).addTo(map)
-                .bindPopup("<b>New Marker!</b><br>Latitude: " + clickedLat + "<br>Longitude: " + clickedLng)
-                .openPopup();
-        });
-    </script>
+        // Display results
+        resultContainer.innerHTML = `
+          <button class="close-button" onclick="closeResults()">×</button>
+          <h2>${name}</h2>
+          <p><strong>CID:</strong> ${cid}</p>
+          <p><strong>Molecular Formula:</strong> <span class="latex-formula">\\(${formula}\\)</span></p>
+          <p><strong>Molecular Weight:</strong> ${weight} g/mol</p>
+          <div class="chemical-structure">
+            <img src="https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG" alt="2D Structure">
+            <div id="molecule-viewer"></div>
+          </div>
+          <div class="export-buttons">
+            <button onclick="downloadSDF(${cid})">Download SDF</button>
+            <button onclick="downloadSMILES(${cid})">Download SMILES</button>
+          </div>
+        `;
+
+        // Render 3D molecule
+        render3DMolecule(cid);
+
+        // Render LaTeX formula
+        MathJax.typeset();
+      } catch (error) {
+        resultContainer.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    function render3DMolecule(cid) {
+      const viewerContainer = document.getElementById('molecule-viewer');
+      viewerContainer.innerHTML = ''; // Clear previous viewer
+      viewer = $3Dmol.createViewer(viewerContainer, { backgroundColor: 'white' });
+      $.get(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/SDF`, function(data) {
+        viewer.addModel(data, 'sdf');
+        viewer.setStyle({}, { stick: {} });
+        viewer.zoomTo();
+        viewer.render();
+      });
+    }
+
+    function downloadSDF(cid) {
+      window.open(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/SDF`, '_blank');
+    }
+
+    function downloadSMILES(cid) {
+      window.open(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/CanonicalSMILES/TXT`, '_blank');
+    }
+
+    function closeResults() {
+      const resultContainer = document.getElementById('resultContainer');
+      resultContainer.style.display = 'none';
+    }
+
+    function resetSearch() {
+      document.getElementById('searchType').value = 'name';
+      document.getElementById('chemicalInput').value = '';
+      closeResults();
+    }
+  </script>
 </body>
 </html>
